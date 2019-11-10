@@ -1,0 +1,19 @@
+{
+  "name": "mmm-homematic-thermostats",
+  "version": "1.0.0",
+  "description": "A MagicMirror Module, that control MMM-pages with two HC-SR04 ultrasonic sensors connected to a Raspberry Pi.",
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "grunt": "^1.0.4",
+    "grunt-eslint": "^22.0.0",
+    "grunt-jsonlint": "^2.0.0",
+    "grunt-markdownlint": "^2.7.0",
+    "grunt-yamllint": "^0.3.0",
+    "stylelint-config-standard": "^19.0.0",
+    "time-grunt": "^2.0.0"
+  },
+  "dependencies": {
+    "mmm-usonic-fixed": "2.5.4"
+  }
+}

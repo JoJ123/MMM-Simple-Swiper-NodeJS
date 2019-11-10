@@ -1,305 +1,530 @@
-# MagicMirror<sup>2</sup> Module: MMM-Homematic-Thermostats
-A MagicMirror Module for your radio controlled Homematic (eQ-3) radiator thermostats of type: <b><a href="http://amzn.to/2nzhd4a" target="_blank" title="">HM-CC-RT-DN</a></b> and wall thermostats of type <b><a href="https://www.amazon.de/dp/B00H7UIMGA" target="_blank" title="">HM-TC-IT-WM-W-EU</a></b><br>
-According documentation, it should also work with devices of type HM-CC-RT-DN-BoM.
+#+AUTHOR: Brandon Marlowe & Otto Juba
+#+EMAIL: bpmarlowe@gmail.com;ottojuba@gmail.com
+#+STARTUP: showall
+#+OPTIONS: toc:nil
 
-from @spitzlberger extended by wall thermostats, style "table", humidity display, warnings, forming of numbers, ... (2019-02-16)
+* MMM-Simple-Swiper
+| Author          | Contact                           |
+|-----------------+-----------------------------------|
+| Brandon Marlowe | bpmarlowe-software@protonmail.com |
+| Otto Juba       | ottojuba@gmail.com                |
 
-### The module displays the following information:
-<table width="100%" border="0">
-	<tbody>
-		<tr>
-			<td>
-				<ul>
-				<li>The name of the heater</li>
-				<li>The current temperature</li>
-				<li>The target temperature</li>
-				<li>The current humidity (only wall thermostat)</li>
-				<li>The current mode</li>
-				<li>The fault reporting (i.e. low battery), if any</li>
-				</ul>
-				Supported languages are: English, Deutsch
-			</td>
-			<td>
-				<img src="https://cloud.githubusercontent.com/assets/26480749/24071459/8d6b75ac-0bd2-11e7-9685-9817bfea7f00.jpg" border="0" height="250px"><br>
-				<span style="font-size:8pt;">Picture: &copy; MAF1981, private</span>
-			</td>
-			<td>
-				<img src="https://user-images.githubusercontent.com/38983450/52899716-60a5ce80-31ed-11e9-8455-9ce4d56f6c7d.jpg" border="0" height="250px"><br>
-				<span style="font-size:8pt;">Picture: &copy; spitzlbergerj, <a href="https://github.com/spitzlbergerj/homematic-scripts/blob/master/LICENSE">GPL-3.0</a></span>
-			</td>
-		</tr>
-	</tbody>
-</table>
+** What is this, and why did we make this module?
+   When setting up our MagicMirrors, we wanted to use two HC-SR04 ultra
+   sonic sensors to detect motion, so we could change the currently
+   displayed page, and feel like wizards who commanded technology using
+   mystical powers (bad joke, I know). When searching through the modules
+   available on the MagicMirror wiki, we found a couple of pre-existing
+   modules built to do just that, but none of them worked. So, we
+   searched online for answers, and found many people having the same
+   issue with the very same modules. So, we decided to make our own.
 
-## Screenshots
+   This module attempts to determine distance/motion based on the output
+   from the sensors in a simple, efficient manner. When the
+   =MMM-Simple-Swiper= modules loads, it sends a socket notification to
+   =node_helper.js=. The =node_helper= then creates a child process,
+   which calls a C executable, and supplies the JSON config as a command
+   line argument in string format. The JSON string is parsed, the values
+   are stored in structs, and an infinite loop is entered. Within the
+   inifinte loop, two threads are created to collect the distance
+   measurements, remove the outliers, and calculate the average
+   distance. The two threads are joined, and the averages are printed to
+   =stdout= in a =[FLOAT]:[FLOAT]= format, which is read by the child
+   process created in =node_helper.js=. From here, the values are checked
+   to see if both are within a certain threshold. If the values meet this
+   criteria and there is a large enough difference between the two
+   values, a socket nofication is sent to the =MMM-Simple-Swiper= module,
+   which sends a notification to the =MMM-pages= module.
 
-<table width="100%" border="0" style="border:0;">
-	<tbody>
-		<tr>
-			<td>
-				Default screen:
-				<p><img src="https://cloud.githubusercontent.com/assets/26480749/24048049/ee2f90c2-0b27-11e7-80d8-8f232328f8a1.png" height="150"/></p>
-			</td>
-			<td>
-				Default screen with a fault message:
-				<p><img src="https://cloud.githubusercontent.com/assets/26480749/24048628/c636b6e8-0b29-11e7-9a2d-ce471f058b35.png" height="150"/></p>
-			</td>
-		</tr>
-		<tr>
-			<td>
-Example: Heater in Kid's room is in manually mode:
-				<p><img src="https://cloud.githubusercontent.com/assets/26480749/24070241/a1463d8c-0bb9-11e7-9b17-1ec5aaa29f73.png" height="150"/></p>
-			</td>
-			<td>
-Example: Heater in Kid's room is in holiday mode (party mode in terms of HomeMatic):
-				<p><img src="https://cloud.githubusercontent.com/assets/26480749/24070845/38182062-0bc5-11e7-9fef-0ef139fc7e24.png" height="150"/></p>
-			</td>
-		</tr>
-		<tr>
-			<td>
-Screen showing all information: <p><code>showSetTemperature: true</code><br><code>showCurrentMode: true</code><br>
-<code>showFaultReporting: true</code></p>
-<p><img src="https://cloud.githubusercontent.com/assets/26480749/24070524/6927f9da-0bbf-11e7-815b-b7786317b8d1.png" height="150"/></p>
-			</td>
-			<td>
-Minimalistic screen:<p><code>showSetTemperature: false</code><br> <code>showCurrentMode: false</code><br>
-<code>showFaultReporting: false</code></p><p><img src="https://cloud.githubusercontent.com/assets/26480749/24048630/c63a891c-0b29-11e7-9639-1677d08c5781.png" height="150"/></p>
-			</td>
-		</tr>
-		<tr>
-			<td colspan="2">
-If you prefer it more colorful, just change the stylesheet...<p><img src="https://cloud.githubusercontent.com/assets/26480749/24070539/c0da85f8-0bbf-11e7-85ba-f03917709805.png" height="150"/></p>
-			</td>
-		</tr>
-		<tr>
-			<td colspan="2">
-In German language:<p><img src="https://cloud.githubusercontent.com/assets/26480749/24070940/0b329e68-0bc7-11e7-9ff2-db339e0ee64e.png" height="150"/></p>
-			</td>
-		</tr>
-		<tr>
-			<td colspan="2">
-And finally the style "Table" with warnings for temperature and humidity above and below the threshold:<p><img src="https://user-images.githubusercontent.com/38983450/52899709-51bf1c00-31ed-11e9-9410-abd4d4b6ab25.jpg" height="200"/></p>
-			</td>
-		</tr>
-	</tbody>
-</table>
+   The overwhelming majority of the work is done on the C-side (get it?
+   It's a pun. "Bazinga" - Sheldon Cooper) of things to keep it fast and
+   efficient. Also, we tried to keep it as lightweight as possible (280
+   lines of code...including the Makefile), so the code is (hopefully)
+   pretty straightforward.
 
-## Pre-requisites
-The following dependencies are required and must be installed to be able to use this module:
-* <a href="https://github.com/MichMich/MagicMirror" target="_blank" title="MagicMirror2">MagigMirror<sup>2</sup></a><br/>
-Obviously yes... without the mirror even this module is useless :-) <br>
-Requires at least MM version: 2.1.0
-* <a href="https://github.com/hobbyquaker/XML-API" target="_blank" title="XML-API for CCU2">XML-API addon</a><br/><b>The XML-API addon must be installed on your Homematic central control unit (CCU1 / CCU2)</b>. 
-* <a href="https://github.com/jindw/xmldom" target="_blank" title="xmldom for node.js">xmldom</a><br/>The xmldom DOMParser and XMLSerializer must be installed for node.js
-* <a href="https://github.com/ashtuchkin/iconv-lite" target="_blank" title="iconv-lite for node.js">iconv-lite</a><br/>The iconv-lite is required to deal with the correct character encoding <code>iso-8859-1</code> (i.e.: German umlauts ä ü ö) after receiving data via the XML-API.
-* <a href="https://momentjs.com" target="_blank" title="moment.js">moment.js</a><br/>The moment.js library is required to parse the dates coming via XML-API (i.e. to display the end date if a device is in vacation mode). Because moment.js is even used by MagicMirror's default modules, you should already have it installed.
-* WiFi/Network - Your CCU2 and your Raspberry Pi has to be connected to your local network. The module communicates with the CCU2 by using HTTP GET-request to retrieve the information. Therfore, each device has to be known by the CCU2 as well.
+** Dependencies
+   This module has three dependencies, all of which are listed in the
+   table below. When you clone this repo, install the =wiringPi= library using the instructions from the table below, and run and =npm install= inside repo's directory.
 
-## Installation
-In your terminal, go to your MagicMirror's Module folder:
-````
-cd ~/MagicMirror/modules
-````
+   | Library Dependencies | Link/Installation                            |
+   |----------------------+----------------------------------------------|
+   | WiringPi             | =sudo apt-get install wiringpi -y=           |
+   | child_process        | https://nodejs.org/api/child_process.html    |
+   | electron-rebuild     | https://github.com/electron/electron-rebuild |
 
-Clone this repository:
-````
-git clone https://github.com/spitzlbergerj/MMM-Homematic-Thermostats
-````
+   | Recommended MagicMirror Modules | Link                                              |
+   |---------------------------------+---------------------------------------------------|
+   | MMM-pages                       | https://github.com/edward-shen/MMM-pages          |
+   | MMM-page-indicator              | https://github.com/edward-shen/MMM-page-indicator |
 
-Configure the module in your `config.js` file as followed.
+** Installation
+You can either follow the manual instructions for installation below, or you can make use of the =MMPM (Magic Mirror Package Manager)= found here: https://github.com/Bee-Mar/mmpm
 
-## Using the module
+#+BEGIN_SRC sh
+# assuming mmpm is already installed
 
-To use this module, add it to the modules array in the `config/config.js` file:
-````javascript
-modules: [
-{
-	module: 'MMM-Homematic-Thermostats',
-	header: 'Myhome: Thermostats',
-	position: 'top_left', // This can be any of the regions.
-	config: {
-		ccu2IP: '127.0.0.1',
-		xmlapiURL: 'config/xmlapi',
-		updateInterval: 120000,
-		style: "table",
-		setTempInBrackets: false,
-		localeStr: 'de-DE',
-		warnColor: 'blue',
-		devices: [
-			{
-				id: '1112',
-				label: 'Living Room',
-				showSetTemperature: false,
-				showCurrentMode: true,
-				showFaultReporting: true,
-				showHumidity: true,
-				precisionTemp: 1,
-				precisionHum: 0,
-				warnTempHigh: true,
-				warnTempLow: true,
-				warnHumHigh: true,
-				warnHumLow: true,
-				tempThresholdLow: 23,
-				tempThresholdHigh: 24,
-				humThresholdLow: 34,
-				humThresholdHigh: 70,
-			}
-			//Add all other devices you want to show
-		],
-	}
-}
-]
-````
+$ sudo apt-get install wiringpi -y
+$ mmpm -i MMM-Simple-Swiper
+$ cd ~/MagicMirror/modules/MMM-Simple-Swiper && make
 
-## Configuration options
-The following properties can be configured:
+#+END_SRC
 
-<table width="100%">
-	<thead>
-		<tr>
-			<th>Option</th>
-			<th width="100%">Description</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr>
-			<td><code>ccu2IP</code></td>
-			<td><b>Optional</b></code> - The IP address of your HomeMatic central control unit.
-				<br/>If not set, the default is: <code>homematic-ccu2</code></td>
-		</tr>
-		<tr>
-			<td><code>xmlapiURL</code></td>
-			<td><b>Optional</b></code> - The URL to the XML-API addon on your HomeMatic central control unit. Is appended to <code>ccu2IP</code>.<br/>If not set, the default is: <code>config/xmlapi</code></td>
-		</tr>
-		<tr>
-			<td><code>updateInterval</code></td>
-			<td><b>Optional</b></code> - The update interval in milliseconds.<br/>
-				If not set, the default is: <code>300000</code> (5 minutes)</td>
-		</tr>
-		<tr>
-			<td><code>style</code></td>
-			<td><b>Optional</b></code> - Determines whether the individual thermostats are displayed as separate lines or as rows in a table. Possible values: <code>'lines'</code> or <code>'table'</code> Default is <code>'lines'</code></td>
-		</tr>
-		<tr>
-			<td><code>setTempInBrackets</code></td>
-			<td><b>Optional</b></code> - determines whether the set target temperature is to be displayed in brackets. Possible values: <code>true</code> or <code>false</code> Default is <code>true</code></td>
-		</tr>
-		<tr>
-			<td><code>localeStr</code></td>
-			<td><b>Optional</b></code> - String for country-specific formatting of numbers. Possible values: see <a href="https://tools.ietf.org/html/rfc5646">Tags for Identifying Languages</a> Default is <code>'de-DE'</code></td>
-		</tr>
-		<tr>
-			<td><code>warnColor</code></td>
-			<td><b>Optional</b></code> - sets the warning color. This value only applies if a value is out of threshold and a warning option is set. Possible values: <code>'red'</code>, <code>'green'</code>, <code>'blue'</code>, <code>'yellow'</code>, <code>'white'</code> Default is <code>'red'</code></td>
-		</tr>
-		<tr>
-			<td><code>devices</code></td>
-			<td><b>Required</b> - Add all your devices that should appear in the MagicMirror. Each device must include the following properties:
-				<table width="100%">
-					<thead>
-						<tr>
-							<th>Option</th>
-							<th width="100%">Description</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td><code>id</code></td>
-							<td>The unique <code>ise_id</code> to identify the device. All ids can be extracted by calling the following URL of the installed XML-API addon: <code>http://ccu2IP/xmlapiURL/devicelist.cgi</code></td>
-						</tr>
-						<tr>
-							<td><code>label</code></td>
-							<td>The label for the device (i.e.: Living Room). If not present or empty, the internal device name is shown instead.</td>
-						</tr>
-						<tr>
-							<td><code>showSetTemperature</code></td>
-							<td>Whether to show or to hide the target temperature. Default is <code>false</code></td>
-						</tr>
-						<tr>
-							<td><code>showCurrentMode</code></td>
-							<td>Whether to show or to hide the current state (i.e.: Heater off). Default is <code>true</code></td>
-						</tr>	
-						<tr>
-							<td><code>showFaultReporting</code></td>
-							<td>Whether to show or to hide any faults of the device (i.e.: Low battery warning). Default is <code>true</code></td>
-						</tr>	
-						<tr>
-							<td><code>showHumidity</code> (only available for wall thermostats)</td>
-							<td>Whether to show or to hide the humidity. Default is <code>true</code></td>
-						</tr>	
-						<tr>
-							<td><code>precisionTemp</code></td>
-							<td>Decimal places for temperature values. Default is <code>2</code></td>
-						</tr>	
-						<tr>
-							<td><code>precisionHum</code></td>
-							<td>Decimal places for humidity values. Default is <code>0</code></td>
-						</tr>	
-						<tr>
-							<td><code>warnTempHigh</code></td>
-							<td>Determines whether a warning is displayed when the temperature threshold <code>tempThresholdHigh</code> is exceeded (or equal) by displaying the value in <code>warnColor</code>. Default is <code>'false'</code></td>
-						</tr>	
-						<tr>
-							<td><code>warnTempLow</code></td>
-							<td>Determines whether a warning is displayed when the temperature falls below or is equal the threshold <code>tempThresholdLow</code> by displaying the value in <code>warnColor</code>. Default is <code>'false'</code></td>
-						</tr>	
-						<tr>
-							<td><code>warnHumHigh</code></td>
-							<td>Determines whether a warning is displayed when the humidity threshold <code>humThresholdHigh</code> is exceeded (or equal) by displaying the value in <code>warnColor</code>. Default is <code>'false'</code></td>
-						</tr>	
-						<tr>
-							<td><code>warnHumLow</code></td>
-							<td>Determines whether a warning is displayed when the humidity falls below or is equal the threshold <code>humThresholdLow</code> by displaying the value in <code>warnColor</code>. Default is <code>'false'</code></td>
-						</tr>	
-						<tr>
-							<td><code>tempThresholdLow</code></td>
-							<td>Temperature lower threshold. Default is <code>5</code></td>
-						</tr>	
-						<tr>
-							<td><code>tempThresholdHigh</code></td>
-							<td>Temperature upper threshold. Default is <code>24</code></td>
-						</tr>	
-						<tr>
-							<td><code>humThresholdLow</code></td>
-							<td>Humidity lower threshold. Default is <code>35</code></td>
-						</tr>	
-						<tr>
-							<td><code>humThresholdHigh</code></td>
-							<td>Humidity upper threshold. Default is <code>60</code></td>
-						</tr>	
-						</tbody>
-				</table>
-			</td>
-		</tr>
-	</tbody>
-</table>
+#+BEGIN_SRC sh
+   # manual installation
+   $ cd ~/MagicMirror/modules/
+   $ https://github.com/Bee-Mar/MMM-Simple-Swiper.git
+   $ cd MMM-Simple-Swiper
+   $ sudo apt-get install wiringpi -y
+   $ npm install
+   $ make
+#+END_SRC
 
-## Troubleshooting
-Make sure that the XML-API addon is working fine. If you've setup the XML-API addon and your HomeMatic central control unit (CCU2) with default values, you should be able to see a list of all your connected devices by clicking the following URL:<br> <a href="http://homematic-ccu2/config/xmlapi/devicelist.cgi" target="_blank"><http://homematic-ccu2/config/xmlapi/devicelist.cgi></a><br>
-Is everything fine, it should look like:<br>
-<img src="https://cloud.githubusercontent.com/assets/26480749/24081489/198aa8ea-0cb5-11e7-93fb-dd43a14b1883.png" height="150"/>
+Be sure to add the snippet for your =config.js= file below.
 
-## Side notes
-<ul>
-<li>The requests via the XML-API addon does not require a login! If your HomeMatic control central unit is accessible without special protection via the Internet, this can be a serious security issue!
-</li>
-<li>The XML-API does not currently support the following information: Temperature offset, window open detection, descaling, keylock and some more parameter</li>
-<li>What is the percentage in the mode? Example:<br>
-<img src="https://cloud.githubusercontent.com/assets/26480749/24070974/b20444bc-0bc7-11e7-8f7f-88a9cc1f64ef.png" height="30"/><br>
-It shows the current valve state of the device.</li>
-</ul>
+** SuDON'T
 
-## Next steps
-I'm planning to implement my HomeMatic window handles with the module to show the window state (open, closed). The window handles are of type <a href="http://amzn.to/2mCxxjU" target="_blank">HM-Sec-RHS</a>.
+   [[./images/checkurpriv.jpg]]
 
-## Notice
-There is a very good Magic Mirror Module <a href="https://github.com/Sickboy78/MMM-Homematic">MMM-Homematic</a> for displaying individual values (windows open or closed, energy consumption of washing machine, ...) or system variables.</br><br/>
-<img src="https://github.com/Sickboy78/MMM-Homematic/blob/master/screenshot.png" height="150"/>
+   When running this module, there is absolutely no need to execute
+   =sudo= with =npm start=. This is due to the small hack (I guess it can
+   be considered a hack??) used when launching the child process within
+   =node_helper.js=. The code snippet where this occurs is shown below:
 
-## Further information
-* <a href="http://www.homematic.com/" target="_blank">homematic.com</a> - HomeMatic website 
-* <a href="https://www.homematic-inside.de/" target="_blank">homematic-inside.de</a> - Best HomeMatic community (blogs, tipps, addons,...)
-* <a href="https://www.homematic-forum.de/" target="_blank">homematic-forum.de</a> - Forum to get help
-* <a href="https://www.homematic-inside.de/software/download/item/homematic-skript" target="_blank">HomeMatic script documentation / specification</a>
-* <a href="https://www.homematic-inside.de/software/addons/item/xmlapi" target="_blank">XML-API section on homematic-inside.de</a>
-* <a href="https://wiki.fhem.de/wiki/HM-CC-RT-DN_Funk-Heizk%C3%B6rperthermostat" target="_blank">FHEM wiki for HM-CC-RT-DN</a> - All information about the device type (German only)
+
+#+BEGIN_SRC js
+  // other code above ...
+
+  var child = require("child_process").spawn("sudo", [
+     __dirname + "/swiper",
+     JSON.stringify(payload),
+  ]);
+
+  // other code below ...
+#+END_SRC
+
+Notice the first argument of the =spawn= function being =sudo=, which
+takes care of the permissions required for the GPIO pins. We show you
+this in an attempt to be transparent, and asure you no funny business
+is taking place.
+
+** Raspberry Pi Pin Layout Reference
+   [[./images/raspberry_pi_circuit_note_fig2a.jpg]]
+   * Source: https://www.jameco.com/Jameco/workshop/circuitnotes/raspberry_pi_circuit_note_fig2a.jpg
+
+** Wiring the Sensors
+   [[./images/hcsr04.png]]
+   * Source: https://github.com/mochman/MMM-Swipe (shamelessly lifted)
+
+** How we wired ours
+   [[./images/MMM-Simple-Swiper-Pin-Layout.jpg]]
+   * _IMPORTANT:_ Do not forget to add a resistor to the Echo wire. Refer to the diagram above.
+
+** Config
+   The default config is shown below, and the order in which the values
+   are listed are not important.  Feel free to tweak the values to your
+   needs. Also, please read the =Tested Conditions/Warning= section
+   below.
+
+#+BEGIN_SRC js
+// other module configs ...
+
+   module: "MMM-Simple-Swiper",
+   disabled: false,
+   config: {
+       echoLeftPin: 24, // GPIO #
+       triggerLeftPin: 23, // GPIO #
+       echoRightPin: 26, // GPIO #
+       triggerRightPin: 25, // GPIO #
+       threshold: 175, // in centimeters
+       distanceDiff: 1.25, // difference between both sensors
+       debug: false, // if true, the raw data is printed to stdout while MagicMirror is running
+       delay: 1000, // time between passing data from C executable to the node_helper in milliseconds
+   }
+
+// other module configs ...
+#+END_SRC
+
+** MMM-pages
+   When using with =MMM-pages=, place =MMM-Simple-Swiper= within the
+   =fixed= property. The =fixed= property contains the list of modules
+   which are fixed in place (as the name would suggest).
+
+   Just so it's more clear, here's the example config taken from the
+   =MMM-pages= Github, with our module tucked nicely inside the
+   =fixed= section.
+
+#+BEGIN_SRC js
+  modules: [
+    {
+      module: 'MMM-pages',
+      config: {
+        modules: [
+          [ "weatherforecast", "newsfeed"],
+          [ "calendar", "compliments" ]
+        ],
+
+        fixed: [
+          "clock",
+          "currentweather",
+          "MMM-page-indicator",
+          "MMM-Simple-Swiper"
+        ],
+
+      }
+    }
+  ]
+#+END_SRC
+
+
+** Tested Conditions/Warning
+   This has only been tested on the RaspberryPi 3 B using Raspbian (based
+   on Debian Stretch), using two HC-SR04 ultra sonic sensors. This module
+   was intended to be run along side =MMM-pages= and
+   =MMM-page-indicator=, and has done so very well in our testing. Also,
+   since the C executable outputs raw values from the sensors, if you
+   wanted to take the code and utilize it in another project, please,
+   feel free. In fact, you're encouraged to do so.
+
+   While messing around with the =delay= parameter of the config in the
+   =MMM-Simple-Swiper= file, we did notice that anything less than 600
+   milliseconds can cause the entire module to hang after running for
+   approximately 30 seconds. We haven't figured out exactly why, but we
+   suspect it has to do with too much throughput, and the child process
+   not being able to read the data from stdout fast enough. Additionally,
+   attempting to cover the sensors or swiping across the sensors rapidly
+   can cause the module to lock up. We are actively looking into
+   this issue, but, if you can exercise patience, and swipe through your
+   pages at a moderate pace, you will not experience this issue.
+
+   If you notice any bugs, please let us know, and we'll do our best to
+   correct them.
+
+   Side note, I'm sure you noticed we abused the use of the special
+   =tags=... =Well, we like how it looks=.
+
+* Future Work
+  We intend to add more options that can be tweaked from the
+  =config.js=, such as:\\
+  * being able to change the direction in which pages slide
+    (ie. left-to-right or right-to-left)
+  * adjusting the number of samples the sensors use for determining
+    motion
+
+  If you have any suggestions that would be cool, or useful, feel free
+  to email us!
+
+* Performance Demonstration
+[[./videos/MMM-Simple-Swiper-Demo.mp4]]
+
+* Step-By-Step Instructions
+** Screencasted Video of Installation
+   [[./videos/MMM-Simple-Swiper-Installation.mp4]]
+** Before getting started...
+
+   1) The demo installation was done on a _Raspberry Pi 3 B_ running
+      Raspbian
+      * The board was _BRAND NEW_ and the OS was _FRESHLY_ installed
+      * The installation occurred after the initial boot and initial
+        update
+        + =Remote GPIO= and =SSH= were enabled under =raspi-config=
+        + (You can enable them as well, if you would like to by
+          following below)
+          1) Open a terminal window
+          2) run =sudo raspi-config=
+          3) select =Interfacing Options=, select =SSH=; select =<YES>=
+             to enable
+          4) Also within =Interfacing Options=; select =Remote GPIO=;
+             select =<YES>= to enable
+
+        + I created SSH keys & copied them to my laptop (for easier
+          SSHing)
+          * For information on how to do this, see:
+            https://www.ssh.com/ssh/keygen/
+        + Otherwise, nothing else beyond what is shown was installed or
+          removed
+
+   2) I used my laptop to SSH into the Pi and record the installation
+      * The Pi cannot handle screen recording + installation of
+        MagicMirror very well
+
+   3) All of these steps can be replicated directly from the Raspberry
+      Pi 3 B in a terminal
+
+   4) There were no steps skipped throughout the video
+
+   5) Instructions for the =Required Packages= are from the relevant
+      Github pages
+
+   6) The Required Packages are the _BARE MINIMUM_ to get this working
+
+   7) _NOTE_: Within the =Basic config.js containing required modules=
+      * There are default modules, which can be removed, if desired
+        (see comments within file)
+
+
+** Required Magic Mirror Modules
+*** NodeJS (10.15 or higher)
+   #+BEGIN_SRC sh
+
+     # taken from: https://github.com/MichMich/MagicMirror
+
+     curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
+
+     sudo apt install nodejs -y
+
+   #+END_SRC
+
+*** MagicMirror
+   #+BEGIN_SRC sh
+
+     cd ~/
+
+     git clone https://github.com/MichMich/MagicMirror
+
+     cd ~/MagicMirror
+
+     npm install
+
+     # for the moment, don’t start the MagicMirror
+
+   #+END_SRC
+
+*** MMM-pages
+   #+BEGIN_SRC sh
+
+     cd ~/MagicMirror/modules/
+
+     git clone https://github.com/edward-shen/MMM-pages.git
+
+     cd ~/MagicMirror/modules/MMM-pages
+
+     npm install
+
+   #+END_SRC
+
+*** MMM-page-indicator
+   #+BEGIN_SRC sh
+
+     cd ~/MagicMirror/modules/
+
+     git clone https://github.com/edward-shen/MMM-page-indicator.git
+
+     # this module has no package.json, so "npm install" is not needed
+
+   #+END_SRC
+
+*** MMM-Simple-Swiper
+   #+BEGIN_SRC sh
+
+     cd ~/MagicMirror/modules
+
+     git clone https://github.com/Bee-Mar/MMM-Simple-Swiper.git
+
+     cd ~/MagicMirror/modules/MMM-Simple-Swiper
+
+     # ONLY DO THIS IF YOU DON’T ALREADY HAVE A CONFIG SETUP
+     cp sample-config-file/SAMPLE_CONFIG.js ~/MagicMirror/config/config.js
+     # otherwise, simply examine the file, and see what is required
+
+     # installing dependencies and compile executable
+     make build_depends && make
+
+     # OPTIONAL: To test the module, follow below
+     cd ~/MagicMirror/modules/MMM-Simple-Swiper/
+
+     make clean && make debug
+
+     sudo ./swiper "{echoLeftPin: 24, triggerLeftPin: 23, echoRightPin: 26, triggerRightPin: 25, threshold: 175, distanceDiff: 1.25, debug: false, delay: 750, }"
+
+     # if the executable compiled correctly, then you should see values being output to the screen
+
+     # after running "make debug", recompile to build normal executable
+     make clean && make
+
+
+
+
+
+   #+END_SRC
+
+
+** Basic config.js containing required modules
+  #+BEGIN_SRC js
+    /* Magic Mirror Config Sample
+     ,*
+     ,* By Michael Teeuw http://michaelteeuw.nl
+     ,* MIT Licensed.
+     ,*
+     ,* For more information how you can configurate this file
+     ,* See https://github.com/MichMich/MagicMirror#configuration
+     ,*
+     ,*/
+
+    var config = {
+      address: "localhost", // Address to listen on, can be:
+      // - "localhost", "127.0.0.1", "::1" to listen on loopback interface
+      // - another specific IPv4/6 to listen on a specific interface
+      // - "", "0.0.0.0", "::" to listen on any interface
+      // Default, when address config is left out, is "localhost"
+      port: 8080,
+      ipWhitelist: ["127.0.0.1", "::ffff:127.0.0.1", "::1"], // Set [] to allow all IP addresses
+      // or add a specific IPv4 of 192.168.1.5 :
+      // ["127.0.0.1", "::ffff:127.0.0.1", "::1", "::ffff:192.168.1.5"],
+      // or IPv4 range of 192.168.3.0 --> 192.168.3.15 use CIDR format :
+      // ["127.0.0.1", "::ffff:127.0.0.1", "::1", "::ffff:192.168.3.0/28"],
+
+      language: "en",
+      timeFormat: 24,
+      units: "metric",
+
+      modules: [
+        {
+          module: "MMM-pages", // REQUIRED
+          config: {
+            modules: [
+              [
+                "weatherforecast", // feel free to remove or swap out
+                "newsfeed", // feel free to remove or swap out
+              ],
+              [
+                "calendar", // feel free to remove or swap out
+                "compliments", // feel free to remove or swap out
+              ],
+            ],
+            fixed: [
+              "clock", // feel free to remove or swap out
+              "currentweather", // feel free to remove or swap out
+              "MMM-page-indicator", // REQUIRED
+              "MMM-Simple-Swiper", // REQUIRED
+            ],
+          },
+        },
+        {
+          module: "MMM-page-indicator", //REQUIRED
+          position: "bottom_bar", // feel free to adjust
+          config: {
+            pages: 3, // feel free to adjust
+          },
+        },
+        {
+          module: "MMM-Simple-Swiper",
+          disabled: false,
+          config: {
+            echoLeftPin: 24, // GPIO #
+            triggerLeftPin: 23, // GPIO #
+            echoRightPin: 26, // GPIO #
+            triggerRightPin: 25, // GPIO #
+            threshold: 175, // in centimeters
+            distanceDiff: 1.25, // difference between both sensors
+            debug: false, // if true, the raw data is printed to stdout while MagicMirror is running
+            delay: 1000, // time between passing data from C executable to the node_helper in milliseconds
+          },
+        },
+        {
+          module: "alert", // feel free to remove or swap out
+          disabled: false,
+        },
+        {
+          module: "updatenotification", // feel free to remove or swap out
+          position: "top_bar",
+          disabled: false,
+        },
+        {
+          module: "clock", // feel free to remove or swap out
+          position: "top_right",
+          timeFormat: 12,
+          showPeriodUpper: true,
+          disabled: false,
+        },
+        {
+          module: "calendar", // feel free to remove or swap out
+          header: "US Holidays",
+          position: "top_right",
+          disabled: false,
+          config: {
+            calendars: [
+              {
+                symbol: "calendar-check-o ",
+                url: "webcal://www.calendarlabs.com/templates/ical/US-Holidays.ics",
+              },
+            ],
+          },
+        },
+
+        {
+          module: "compliments", // feel free to remove or swap out
+          position: "lower_third",
+          disabled: true,
+        },
+
+        {
+          module: "weatherforecast", // feel free to remove or swap out
+          position: "top_right",
+          header: "Weather Forecast",
+          disabled: false,
+          config: {
+            location: "New York, NY, USA",
+            units: "imperial",
+            appid: "c0520f8e8537b2c7555a9f7d5c2d53ec",
+          },
+        },
+
+        {
+          module: "currentweather", // feel free to remove or swap out
+          position: "top_right",
+          disabled: false,
+          config: {
+            location: "New York, NY, USA",
+            units: "imperial",
+            appid: "c0520f8e8537b2c7555a9f7d5c2d53ec",
+          },
+        },
+
+        {
+          module: "newsfeed", // feel free to remove or swap out
+          position: "bottom_bar",
+          config: {
+            feeds: [
+              {
+                title: "New York Times",
+                url: "http://www.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+              },
+              {
+                title: "CNET",
+                url: "https://www.cnet.com/rss/news/",
+              },
+              {
+                title: "TechRepublic",
+                url: "https://www.techrepublic.com/rssfeeds/articles/",
+              },
+            ],
+            showSourceTitle: true,
+            showPublishDate: true,
+          },
+        },
+      ],
+    };
+
+    /*************** DO NOT EDIT THE LINE BELOW ***************/
+    if (typeof module !== "undefined") {
+      module.exports = config;
+    }
+  #+END_SRC
+
+
+** Start MagicMirror
+   #+BEGIN_SRC sh
+
+     cd ~/MagicMirror
+
+     npm start
+
+     # check to ensure the MMM-Simple-Swiper module is running
+     ps -ef | egrep -i "sudo\s+.*./MMM-Simple-Swiper/swiper"
+
+     # if it is running, you should see an output similar to this
+     sudo /home/pi/MagicMirror/modules/MMM-Simple-Swiper/main {"echoLeftPin":24,"triggerLeftPin":23,"echoRightPin":26,"triggerRightPin":25,"threshold":175,"distanceDiff":1.25,"debug":false,"delay":1000}
+
+     # depending on the arguments provided to the config, your JSON string may differ
+
+   #+END_SRC
